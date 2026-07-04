@@ -8,6 +8,7 @@ from fastapi.responses import (
     FileResponse,
     HTMLResponse,
     JSONResponse,
+    PlainTextResponse,
     RedirectResponse,
 )
 from fastapi.staticfiles import StaticFiles
@@ -68,10 +69,22 @@ def _auth_token() -> str:
 
 @app.middleware("http")
 async def password_gate(request: Request, call_next):
+    path = request.url.path
+
+    # Serve TikTok's domain-verification file publicly, before any gating, so
+    # verification succeeds even while the password gate is on.
+    if (
+        settings.tiktok_verify_filename
+        and path.lstrip("/") == settings.tiktok_verify_filename
+    ):
+        return PlainTextResponse(settings.tiktok_verify_content)
+
     if not settings.dashboard_password:
         return await call_next(request)  # gate disabled
-    path = request.url.path
-    if path in _OPEN_PATHS:
+
+    # Normalize trailing slashes so e.g. "/terms/" matches "/terms".
+    norm = path.rstrip("/") or "/"
+    if norm in _OPEN_PATHS or path in _OPEN_PATHS:
         return await call_next(request)
     if request.cookies.get(AUTH_COOKIE) == _auth_token():
         return await call_next(request)

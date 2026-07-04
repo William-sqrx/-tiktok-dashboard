@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     # Password gate for the whole site. If empty, the gate is disabled (open).
     dashboard_password: str = ""
 
+    # TikTok domain-verification file: served publicly at /<filename> so TikTok
+    # can confirm we own the domain (works even with the password gate on).
+    tiktok_verify_filename: str = ""
+    tiktok_verify_content: str = ""
+
     # TikTok API endpoints (v2)
     authorize_url: str = "https://www.tiktok.com/v2/auth/authorize/"
     token_url: str = "https://open.tiktokapis.com/v2/oauth/token/"
