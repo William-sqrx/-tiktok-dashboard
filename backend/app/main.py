@@ -1,8 +1,15 @@
+import hashlib
+import hmac
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    RedirectResponse,
+)
 from fastapi.staticfiles import StaticFiles
 
 from .config import settings
@@ -30,6 +37,102 @@ app.include_router(accounts.router)
 def health():
     configured = bool(settings.tiktok_client_key and settings.tiktok_client_secret)
     return {"status": "ok", "tiktok_configured": configured}
+
+
+# --- Password gate ----------------------------------------------------------
+# A single shared password protects the whole site. Set DASHBOARD_PASSWORD to
+# enable it; leave it empty (e.g. local dev) and the gate is off.
+AUTH_COOKIE = "dash_auth"
+
+# Paths reachable WITHOUT the password:
+#  - /api/health           Render's uptime probe has no cookie
+#  - /login, /api/login     the login page and its form POST
+#  - the TikTok OAuth callback: TikTok redirects the browser here with a
+#    server-validated `state`, so it's safe and must not be blocked
+_OPEN_PATHS = {
+    "/api/health",
+    "/login",
+    "/api/login",
+    "/api/auth/tiktok/callback",
+}
+
+
+def _auth_token() -> str:
+    """Deterministic cookie value derived from the server's secret."""
+    secret = (settings.encryption_key or "dev-secret").encode()
+    return hmac.new(secret, b"dashboard-authorized", hashlib.sha256).hexdigest()
+
+
+@app.middleware("http")
+async def password_gate(request: Request, call_next):
+    if not settings.dashboard_password:
+        return await call_next(request)  # gate disabled
+    path = request.url.path
+    if path in _OPEN_PATHS:
+        return await call_next(request)
+    if request.cookies.get(AUTH_COOKIE) == _auth_token():
+        return await call_next(request)
+    # Not authenticated.
+    if path.startswith("/api/"):
+        return JSONResponse({"detail": "unauthorized"}, status_code=401)
+    return RedirectResponse("/login")
+
+
+_LOGIN_HTML = """<!doctype html>
+<html><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Sign in</title>
+<style>
+  body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;
+    background:#0f0f12;color:#f1f1f4;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  form{background:#17171c;border:1px solid #2a2a34;border-radius:12px;padding:28px;width:300px}
+  h1{font-size:18px;margin:0 0 4px}
+  p.sub{color:#9a9aa8;font-size:13px;margin:0 0 18px}
+  input{width:100%;box-sizing:border-box;padding:11px;border-radius:8px;border:1px solid #2a2a34;
+    background:#1e1e26;color:#f1f1f4;font-size:14px}
+  button{width:100%;margin-top:12px;padding:11px;border:0;border-radius:8px;background:#ff0050;
+    color:#fff;font-size:14px;font-weight:600;cursor:pointer}
+  p.err{color:#ffb3c4;font-size:13px;margin:12px 0 0}
+</style></head>
+<body>
+  <form method="post" action="/api/login">
+    <h1>TikTok Dashboard</h1>
+    <p class="sub">Enter the password to continue.</p>
+    <input type="password" name="password" placeholder="Password" autofocus required autocomplete="current-password"/>
+    <button type="submit">Sign in</button>
+    {{ERROR}}
+  </form>
+</body></html>"""
+
+
+@app.get("/login", response_class=HTMLResponse)
+def login_page(error: str = ""):
+    msg = '<p class="err">Wrong password — try again.</p>' if error else ""
+    return _LOGIN_HTML.replace("{{ERROR}}", msg)
+
+
+@app.post("/api/login")
+def do_login(request: Request, password: str = Form(...)):
+    if not settings.dashboard_password or password != settings.dashboard_password:
+        return RedirectResponse("/login?error=1", status_code=303)
+    resp = RedirectResponse("/", status_code=303)
+    resp.set_cookie(
+        AUTH_COOKIE,
+        _auth_token(),
+        httponly=True,
+        samesite="lax",
+        secure=request.url.scheme == "https",
+        max_age=60 * 60 * 24 * 30,  # 30 days
+        path="/",
+    )
+    return resp
+
+
+@app.get("/logout")
+def logout():
+    resp = RedirectResponse("/login", status_code=303)
+    resp.delete_cookie(AUTH_COOKIE, path="/")
+    return resp
 
 
 # --- Serve the built React app (production) ---------------------------------

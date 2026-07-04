@@ -33,6 +33,11 @@ export interface Snapshot {
 }
 
 async function json<T>(res: Response): Promise<T> {
+  // Session expired / not signed in → bounce to the password page.
+  if (res.status === 401) {
+    window.location.href = "/login";
+    throw new Error("unauthorized");
+  }
   if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
   return res.json();
 }
