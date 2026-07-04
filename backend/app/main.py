@@ -54,6 +54,9 @@ _OPEN_PATHS = {
     "/login",
     "/api/login",
     "/api/auth/tiktok/callback",
+    # Public legal pages (TikTok requires reachable ToS/Privacy URLs).
+    "/terms",
+    "/privacy",
 }
 
 
@@ -133,6 +136,47 @@ def logout():
     resp = RedirectResponse("/login", status_code=303)
     resp.delete_cookie(AUTH_COOKIE, path="/")
     return resp
+
+
+_LEGAL_CSS = (
+    "max-width:720px;margin:40px auto;padding:0 20px;line-height:1.6;"
+    "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;"
+    "color:#1a1a1a"
+)
+
+
+@app.get("/terms", response_class=HTMLResponse)
+def terms():
+    return f"""<!doctype html><html><head><meta charset="utf-8"/>
+<title>Terms of Service</title></head><body style="{_LEGAL_CSS}">
+<h1>Terms of Service</h1>
+<p>This is a private, personal dashboard used by its owner to view analytics for
+TikTok accounts they own and have authorized. It is read-only and does not post,
+modify, or share any content.</p>
+<p>The service is provided "as is", without warranty of any kind. The owner is
+responsible for how it is used and for complying with TikTok's Terms of Service.</p>
+<p>Access is restricted by a password and by TikTok's own authorization: only
+accounts whose owners explicitly sign in and grant permission are shown.</p>
+<p>Contact: williamjacob0910@gmail.com</p>
+</body></html>"""
+
+
+@app.get("/privacy", response_class=HTMLResponse)
+def privacy():
+    return f"""<!doctype html><html><head><meta charset="utf-8"/>
+<title>Privacy Policy</title></head><body style="{_LEGAL_CSS}">
+<h1>Privacy Policy</h1>
+<p>This dashboard connects to TikTok accounts via TikTok's official Login Kit
+(OAuth). It stores only the access tokens returned by TikTok (encrypted at rest)
+and the public profile and video statistics those tokens grant access to
+(follower counts, video views, likes, comments, and shares).</p>
+<p>It never receives or stores TikTok passwords. Data is used solely to display
+each connected account's own performance to the account owner, and is not sold,
+shared, or sent to any third party.</p>
+<p>You can disconnect an account at any time, which deletes its stored tokens and
+data from this application.</p>
+<p>Contact: williamjacob0910@gmail.com</p>
+</body></html>"""
 
 
 # --- Serve the built React app (production) ---------------------------------
