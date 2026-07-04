@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     # the scheduler API without the browser password cookie.
     worker_token: str = ""
 
+    # PostPeer (postpeer.dev) — posting + analytics for connected TikTok accounts.
+    postpeer_key: str = ""
+    postpeer_api: str = "https://api.postpeer.dev/v1"
+
     # TikTok API endpoints (v2)
     authorize_url: str = "https://www.tiktok.com/v2/auth/authorize/"
     token_url: str = "https://open.tiktokapis.com/v2/oauth/token/"

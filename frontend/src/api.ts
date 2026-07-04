@@ -123,6 +123,30 @@ export const schedule = {
     fetch(`/api/schedule/posts/${id}`, { method: "DELETE" }).then(json),
 };
 
+export interface CreatorInfo {
+  creatorAvatarUrl: string | null;
+  creatorUsername: string | null;
+  creatorNickname: string | null;
+}
+
+export interface PPVideo {
+  content: string | null;
+  published_at: string | null;
+  url: string | null;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  saves: number;
+}
+
+export const pp = {
+  info: (accountId: number) =>
+    fetch(`/api/pp/accounts/${accountId}/info`).then(json<CreatorInfo>),
+  posts: (accountId: number) =>
+    fetch(`/api/pp/accounts/${accountId}/posts`).then(json<PPVideo[]>),
+};
+
 export function fmt(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
   if (n >= 1_000) return (n / 1_000).toFixed(1) + "K";

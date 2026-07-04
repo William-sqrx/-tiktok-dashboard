@@ -11,6 +11,7 @@ const STATUS_COLOR: Record<string, string> = {
   pending: "#9a9aa8",
   generating: "#3b82f6",
   ready: "#a855f7",
+  scheduled: "#14b8a6", // video rendered & queued on PostPeer's cloud
   posting: "#f59e0b",
   posted: "#22c55e",
   error: "#ef4444",

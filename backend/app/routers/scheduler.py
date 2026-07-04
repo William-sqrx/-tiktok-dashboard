@@ -2,7 +2,7 @@
 the worker endpoints that the local/cloud generator polls."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -122,6 +122,7 @@ def delete_account(account_id: int, db: Session = Depends(get_db)):
 def list_posts(
     start: Optional[datetime] = Query(None),
     end: Optional[datetime] = Query(None),
+    status: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
     q = db.query(ScheduledPost)
@@ -129,6 +130,8 @@ def list_posts(
         q = q.filter(ScheduledPost.scheduled_at >= start)
     if end:
         q = q.filter(ScheduledPost.scheduled_at <= end)
+    if status:
+        q = q.filter(ScheduledPost.status == status)
     rows = q.order_by(ScheduledPost.scheduled_at).all()
     return [_post(p) for p in rows]
 
@@ -178,12 +181,20 @@ def delete_post(post_id: int, db: Session = Depends(get_db)):
 # Worker endpoints (the generator polls these; auth via X-Worker-Token gate)
 # --------------------------------------------------------------------------- #
 @router.get("/due")
-def due_posts(db: Session = Depends(get_db)):
-    """Posts whose time has arrived and still need to be generated/posted."""
+def due_posts(
+    within_hours: float = Query(0, ge=0, le=168),
+    db: Session = Depends(get_db),
+):
+    """Pending posts that are due now — or, with within_hours, due soon.
+
+    The worker passes within_hours=24 so it can pre-generate videos ahead of
+    time and hand them to PostPeer, which then publishes at the exact minute.
+    """
+    horizon = _now() + timedelta(hours=within_hours)
     rows = (
         db.query(ScheduledPost)
         .filter(ScheduledPost.status == "pending")
-        .filter(ScheduledPost.scheduled_at <= _now())
+        .filter(ScheduledPost.scheduled_at <= horizon)
         .order_by(ScheduledPost.scheduled_at)
         .all()
     )

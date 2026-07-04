@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import settings
 from .database import Base, engine
-from .routers import accounts, auth, scheduler
+from .routers import accounts, auth, postpeer, scheduler
 
 # Create tables on startup (simple; swap for Alembic migrations if it grows).
 Base.metadata.create_all(bind=engine)
@@ -34,6 +34,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(accounts.router)
 app.include_router(scheduler.router)
+app.include_router(postpeer.router)
 
 
 @app.get("/api/health")
