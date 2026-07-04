@@ -1,0 +1,21 @@
+name: TikTok sync
+
+# Render's free plan has no cron jobs, so we trigger the sync from GitHub
+# Actions instead. It POSTs to the app's /api/sync, which refreshes each
+# account's videos + stats and records a snapshot for the trend charts.
+
+on:
+  schedule:
+    - cron: "0 */6 * * *" # every 6 hours (UTC)
+  workflow_dispatch: {} # lets you run it manually from the Actions tab
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger dashboard sync
+        run: |
+          echo "Waking the app and syncing (free tier may cold-start ~30s)…"
+          curl -fsS --max-time 300 -X POST \
+            "https://tiktok-dashboard-gs4g.onrender.com/api/sync"
+          echo "Sync triggered."

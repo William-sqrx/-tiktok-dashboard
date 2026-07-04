@@ -30,19 +30,9 @@ services:
           name: tiktok-db
           property: connectionString
 
-  # Runs the sync every 6 hours so stats/videos stay fresh without you clicking.
-  - type: cron
-    name: tiktok-sync
-    runtime: docker
-    dockerfilePath: ./Dockerfile
-    plan: free
-    schedule: "0 */6 * * *"
-    dockerCommand: >-
-      python -c "import os,urllib.request;
-      urllib.request.urlopen(urllib.request.Request(os.environ['APP_URL'].rstrip('/')+'/api/sync', method='POST'), timeout=120)"
-    envVars:
-      - key: APP_URL
-        sync: false   # your live Render URL, e.g. https://<app>.onrender.com
+# NOTE: Render's free plan does NOT include cron jobs, so the scheduled sync
+# lives in GitHub Actions instead — see .github/workflows/sync.yml. If you
+# upgrade to a paid plan you can move it back here as a `type: cron` service.
 
 databases:
   - name: tiktok-db
