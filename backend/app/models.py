@@ -90,3 +90,54 @@ class StatSnapshot(Base):
     video_count = Column(BigInteger, default=0)
 
     account = relationship("Account", back_populates="snapshots")
+
+
+class PostingAccount(Base):
+    """One of the TikTok accounts we schedule posts to.
+
+    Maps a friendly name to the upload-post.com profile ("user") that is
+    connected to that TikTok account, so the worker knows where to post.
+    """
+
+    __tablename__ = "posting_accounts"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)  # e.g. "HSK Fish Main"
+    upload_post_user = Column(String, nullable=False)  # upload-post.com profile
+    color = Column(String, nullable=True)  # calendar dot color
+    created_at = Column(DateTime(timezone=True), default=_now)
+
+    posts = relationship(
+        "ScheduledPost", back_populates="account", cascade="all, delete-orphan"
+    )
+
+
+class ScheduledPost(Base):
+    """A song queued to be generated into a video and posted at a given time."""
+
+    __tablename__ = "scheduled_posts"
+
+    id = Column(Integer, primary_key=True)
+    posting_account_id = Column(
+        Integer, ForeignKey("posting_accounts.id"), nullable=False
+    )
+
+    # What to make
+    song_query = Column(Text, nullable=False)  # song name or YouTube URL
+    title = Column(String, nullable=True)
+    artist = Column(String, nullable=True)
+    caption = Column(Text, nullable=True)  # optional override
+
+    # When to post
+    scheduled_at = Column(DateTime(timezone=True), nullable=False)
+
+    # Lifecycle: pending -> generating -> ready -> posting -> posted / error
+    status = Column(String, default="pending", nullable=False)
+    video_path = Column(Text, nullable=True)  # set by the worker after render
+    post_result = Column(Text, nullable=True)  # upload-post.com response / url
+    error = Column(Text, nullable=True)
+
+    created_at = Column(DateTime(timezone=True), default=_now)
+    updated_at = Column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+    account = relationship("PostingAccount", back_populates="posts")

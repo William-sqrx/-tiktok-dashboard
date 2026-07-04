@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import settings
 from .database import Base, engine
-from .routers import accounts, auth
+from .routers import accounts, auth, scheduler
 
 # Create tables on startup (simple; swap for Alembic migrations if it grows).
 Base.metadata.create_all(bind=engine)
@@ -33,6 +33,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(accounts.router)
+app.include_router(scheduler.router)
 
 
 @app.get("/api/health")
@@ -85,6 +86,14 @@ async def password_gate(request: Request, call_next):
         return PlainTextResponse(
             f"tiktok-developers-site-verification={_m.group(1)}"
         )
+
+    # The generation worker authenticates with a shared token instead of the
+    # browser password cookie.
+    if (
+        settings.worker_token
+        and request.headers.get("x-worker-token") == settings.worker_token
+    ):
+        return await call_next(request)
 
     if not settings.dashboard_password:
         return await call_next(request)  # gate disabled

@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     tiktok_verify_filename: str = ""
     tiktok_verify_content: str = ""
 
+    # Shared secret the generation worker sends (X-Worker-Token header) to reach
+    # the scheduler API without the browser password cookie.
+    worker_token: str = ""
+
     # TikTok API endpoints (v2)
     authorize_url: str = "https://www.tiktok.com/v2/auth/authorize/"
     token_url: str = "https://open.tiktokapis.com/v2/oauth/token/"

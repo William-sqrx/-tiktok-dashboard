@@ -61,6 +61,68 @@ export const api = {
     ),
 };
 
+export interface PostingAccount {
+  id: number;
+  name: string;
+  upload_post_user: string;
+  color: string | null;
+}
+
+export interface ScheduledPost {
+  id: number;
+  posting_account_id: number;
+  account_name: string | null;
+  account_color: string | null;
+  song_query: string;
+  title: string | null;
+  artist: string | null;
+  caption: string | null;
+  scheduled_at: string;
+  status: string;
+  video_path: string | null;
+  post_result: string | null;
+  error: string | null;
+}
+
+export const schedule = {
+  accounts: () =>
+    fetch("/api/schedule/accounts").then(json<PostingAccount[]>),
+  addAccount: (b: { name: string; upload_post_user: string; color?: string }) =>
+    fetch("/api/schedule/accounts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(b),
+    }).then(json<PostingAccount>),
+  delAccount: (id: number) =>
+    fetch(`/api/schedule/accounts/${id}`, { method: "DELETE" }).then(json),
+  posts: (start: string, end: string) =>
+    fetch(
+      `/api/schedule/posts?start=${encodeURIComponent(
+        start
+      )}&end=${encodeURIComponent(end)}`
+    ).then(json<ScheduledPost[]>),
+  addPost: (b: {
+    posting_account_id: number;
+    song_query: string;
+    title?: string;
+    caption?: string;
+    scheduled_at: string;
+  }) =>
+    fetch("/api/schedule/posts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(b),
+    }).then(json<ScheduledPost>),
+  patchPost: (id: number, b: Partial<{ scheduled_at: string; status: string }>) =>
+    fetch(`/api/schedule/posts/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(b),
+    }).then(json<ScheduledPost>),
+  delPost: (id: number) =>
+    fetch(`/api/schedule/posts/${id}`, { method: "DELETE" }).then(json),
+};
+
 export function fmt(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
   if (n >= 1_000) return (n / 1_000).toFixed(1) + "K";

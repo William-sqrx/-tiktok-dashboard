@@ -3,8 +3,12 @@ import { Account, Snapshot, Video, api, fmt } from "./api";
 import { AccountCard } from "./components/AccountCard";
 import { FollowerChart } from "./components/FollowerChart";
 import { VideoGrid } from "./components/VideoGrid";
+import { Schedule } from "./components/Schedule";
+
+type Tab = "dashboard" | "schedule";
 
 export default function App() {
+  const [tab, setTab] = useState<Tab>("schedule");
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
@@ -64,29 +68,49 @@ export default function App() {
   return (
     <div className="app">
       <header>
-        <h1>TikTok Dashboard</h1>
-        <div className="actions">
-          <button onClick={connect}>+ Connect account</button>
-          <button onClick={syncAll} disabled={busy}>
-            {busy ? "Syncing…" : "Sync all"}
+        <h1>TikTok Studio</h1>
+        <nav className="tabs">
+          <button
+            className={tab === "schedule" ? "on" : ""}
+            onClick={() => setTab("schedule")}
+          >
+            Schedule
           </button>
-        </div>
+          <button
+            className={tab === "dashboard" ? "on" : ""}
+            onClick={() => setTab("dashboard")}
+          >
+            Analytics
+          </button>
+        </nav>
+        <div className="spacer" />
+        {tab === "dashboard" && (
+          <div className="actions">
+            <button onClick={connect}>+ Connect account</button>
+            <button onClick={syncAll} disabled={busy}>
+              {busy ? "Syncing…" : "Sync all"}
+            </button>
+          </div>
+        )}
       </header>
 
-      {!configured && (
+      {tab === "schedule" && <Schedule />}
+
+      {tab === "dashboard" && !configured && (
         <div className="banner warn">
           ⚠️ TikTok app credentials aren't set on the server yet. Add your{" "}
           <code>TIKTOK_CLIENT_KEY</code> and <code>TIKTOK_CLIENT_SECRET</code>{" "}
           (see the README), then reload. Connecting won't work until then.
         </div>
       )}
-      {error && (
+      {tab === "dashboard" && error && (
         <div className="banner error" onClick={() => setError(null)}>
           Something went wrong: {error} (click to dismiss)
         </div>
       )}
 
-      {accounts.length === 0 ? (
+      {tab === "dashboard" &&
+        (accounts.length === 0 ? (
         <div className="empty">
           <p>No accounts connected yet.</p>
           <p className="hint">
@@ -133,7 +157,7 @@ export default function App() {
             )}
           </main>
         </div>
-      )}
+        ))}
     </div>
   );
 }
