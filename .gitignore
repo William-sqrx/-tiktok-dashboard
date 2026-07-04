@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.db
+
+# Env / secrets
+.env
+
+# Node
+node_modules/
+dist/
+
+# Editors
+.DS_Store
