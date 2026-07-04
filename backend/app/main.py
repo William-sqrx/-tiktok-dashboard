@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import os
+import re
 
 from fastapi import FastAPI, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -45,6 +46,9 @@ def health():
 # enable it; leave it empty (e.g. local dev) and the gate is off.
 AUTH_COOKIE = "dash_auth"
 
+# Matches TikTok's domain-verification filenames, e.g. tiktokABC123.txt
+_TIKTOK_VERIFY_RE = re.compile(r"^tiktok([A-Za-z0-9_-]+)\.txt$")
+
 # Paths reachable WITHOUT the password:
 #  - /api/health           Render's uptime probe has no cookie
 #  - /login, /api/login     the login page and its form POST
@@ -71,13 +75,16 @@ def _auth_token() -> str:
 async def password_gate(request: Request, call_next):
     path = request.url.path
 
-    # Serve TikTok's domain-verification file publicly, before any gating, so
-    # verification succeeds even while the password gate is on.
-    if (
-        settings.tiktok_verify_filename
-        and path.lstrip("/") == settings.tiktok_verify_filename
-    ):
-        return PlainTextResponse(settings.tiktok_verify_content)
+    # Serve TikTok's domain-verification files publicly, before any gating, so
+    # verification works even with the password gate on. TikTok always names the
+    # file tiktok<CODE>.txt with contents
+    # "tiktok-developers-site-verification=<CODE>", so we can answer any such
+    # request, at the domain root or under any path prefix.
+    _m = _TIKTOK_VERIFY_RE.match(path.rsplit("/", 1)[-1])
+    if _m:
+        return PlainTextResponse(
+            f"tiktok-developers-site-verification={_m.group(1)}"
+        )
 
     if not settings.dashboard_password:
         return await call_next(request)  # gate disabled
